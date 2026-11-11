@@ -80,11 +80,11 @@ impl GpuContext {
         }
     }
 
-    pub fn render<F>(&self, background: [f64; 4], draw: F) -> Result<()>
+    pub fn render<F>(&mut self, background: [f64; 4], draw: F) -> Result<()>
     where
         F: FnOnce(&mut wgpu::RenderPass<'_>),
     {
-        let mut frame = match self.surface.get_current_texture() {
+        let frame = match self.surface.get_current_texture() {
             Ok(frame) => frame,
             Err(wgpu::SurfaceError::Outdated) | Err(wgpu::SurfaceError::Lost) => {
                 self.reconfigure();
