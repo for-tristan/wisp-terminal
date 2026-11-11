@@ -4,7 +4,7 @@ use thiserror::Error;
 
 pub mod theme;
 
-pub use theme::{Palette, Theme};
+pub use theme::{Color, CursorShape, Palette, Theme};
 
 const CONFIG_DIR_ENV_FALLBACK: &str = "wisp";
 

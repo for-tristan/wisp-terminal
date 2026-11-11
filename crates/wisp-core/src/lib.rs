@@ -1,3 +1,4 @@
+pub mod emulator;
 pub mod pty;
 pub mod terminal;
 
