@@ -52,6 +52,28 @@ impl WispApp {
             .unwrap_or([0x1A, 0x22, 0x2C])
     }
 
+    fn sync_grid(&mut self) {
+        let Some(renderer) = &self.renderer else {
+            return;
+        };
+        let Some(window) = &self.window else {
+            return;
+        };
+        let size = window.inner_size();
+        let (cell_width, cell_height) = renderer.metrics();
+        let padding = self.config.window.padding;
+        let usable_width = size.width.saturating_sub(2 * padding.x as u32);
+        let usable_height = size.height.saturating_sub(2 * padding.y as u32);
+        let cols = (usable_width as f32 / cell_width).floor().max(2.0) as usize;
+        let rows = (usable_height as f32 / cell_height).floor().max(2.0) as usize;
+        if self.emulator.resize(cols, rows).is_ok() {
+            self.renderer
+                .as_mut()
+                .expect("renderer checked above")
+                .set_origin(padding.x as f32, padding.y as f32);
+        }
+    }
+
     fn request_redraw(&self) {
         if let Some(window) = &self.window {
             window.request_redraw();
@@ -96,8 +118,14 @@ impl ApplicationHandler<UserEvent> for WispApp {
         self.window = Some(Arc::new(window));
 
         let background = self.background_rgb();
-        match Renderer::new(self.window.clone().expect("window"), background) {
-            Ok(renderer) => self.renderer = Some(renderer),
+        let font_config = self.config.font.clone();
+        match Renderer::new(self.window.clone().expect("window"), background, &font_config) {
+            Ok(renderer) => {
+                let (cell_width, cell_height) = renderer.metrics();
+                self.emulator.set_cell_size(cell_width as u16, cell_height as u16);
+                self.renderer = Some(renderer);
+                self.sync_grid();
+            }
             Err(error) => log::error!("renderer init failed: {error}"),
         }
 
@@ -130,6 +158,7 @@ impl ApplicationHandler<UserEvent> for WispApp {
                 if let Some(renderer) = &mut self.renderer {
                     renderer.resize(size.width, size.height);
                 }
+                self.sync_grid();
                 self.request_redraw();
             }
             WindowEvent::Focused(focused) => {

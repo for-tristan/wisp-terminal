@@ -2,21 +2,25 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use winit::window::Window;
+use wisp_config::FontConfig;
 
+use crate::font::FontStack;
 use crate::gpu::GpuContext;
 use crate::pipeline::{CellPipeline, ScreenUniform};
 
 pub struct Renderer {
     gpu: GpuContext,
     background: [u8; 3],
+    pub font_stack: FontStack,
     cell_pipeline: CellPipeline,
     cell_size: (f32, f32),
     origin: (f32, f32),
 }
 
 impl Renderer {
-    pub fn new(window: Arc<Window>, background: [u8; 3]) -> Result<Self> {
+    pub fn new(window: Arc<Window>, background: [u8; 3], font_config: &FontConfig) -> Result<Self> {
         let gpu = GpuContext::new(window)?;
+        let font_stack = FontStack::load(font_config)?;
 
         let atlas_texture = gpu
             .device
@@ -70,13 +74,23 @@ impl Renderer {
             &atlas_sampler,
         );
 
+        let cell_size = (
+            font_stack.metrics.width.max(1.0),
+            font_stack.metrics.height.max(1.0),
+        );
+
         Ok(Self {
             gpu,
             background,
+            font_stack,
             cell_pipeline,
-            cell_size: (9.0, 18.0),
+            cell_size,
             origin: (0.0, 0.0),
         })
+    }
+
+    pub fn metrics(&self) -> (f32, f32) {
+        (self.font_stack.metrics.width, self.font_stack.metrics.height)
     }
 
     pub fn set_background(&mut self, background: [u8; 3]) {
@@ -85,6 +99,10 @@ impl Renderer {
 
     pub fn set_cell_size(&mut self, width: f32, height: f32) {
         self.cell_size = (width.max(1.0), height.max(1.0));
+    }
+
+    pub fn screen_size(&self) -> (f32, f32) {
+        (self.gpu.size.0 as f32, self.gpu.size.1 as f32)
     }
 
     pub fn set_origin(&mut self, x: f32, y: f32) {
