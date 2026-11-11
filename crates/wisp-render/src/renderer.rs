@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use anyhow::Result;
@@ -36,9 +37,13 @@ pub struct Renderer {
     cursor_text: [u8; 3],
     pub font_stack: FontStack,
     pub atlas: GlyphAtlas,
+    glyph_map: HashMap<u64, Option<crate::atlas::CachedGlyphCoords>>,
+    glyph_map_generation: u64,
     cell_pipeline: CellPipeline,
     cell_size: (f32, f32),
     origin: (f32, f32),
+    instance_buffer: Vec<CellInstance>,
+    glyph_buffer: Vec<CellInstance>,
 }
 
 impl Renderer {
@@ -75,9 +80,13 @@ impl Renderer {
             cursor_text: palette_rgb(&theme.palette, "cursor_text"),
             font_stack,
             atlas,
+            glyph_map: HashMap::new(),
+            glyph_map_generation: 0,
             cell_pipeline,
             cell_size,
             origin: (0.0, 0.0),
+            instance_buffer: Vec::with_capacity(4096),
+            glyph_buffer: Vec::with_capacity(4096),
         })
     }
 
@@ -93,13 +102,24 @@ impl Renderer {
         variant: StyleVariant,
         ch: char,
     ) -> Option<crate::atlas::CachedGlyphCoords> {
+        if self.glyph_map_generation != self.atlas.generation {
+            self.glyph_map.clear();
+            self.glyph_map_generation = self.atlas.generation;
+        }
+        let key = ((variant.font_id() as u64) << 32) | ch as u32 as u64;
+        if let Some(cached) = self.glyph_map.get(&key) {
+            return *cached;
+        }
         let font = self.font_stack.font(variant);
         let glyph = font
             .glyph(ch)
             .scaled(self.font_stack.scale)
             .positioned(rusttype::point(0.0, 0.0));
-        self.atlas
-            .cache_glyph(&self.gpu.queue, glyph, variant.font_id())
+        let coords = self
+            .atlas
+            .cache_glyph(&self.gpu.queue, glyph, variant.font_id());
+        self.glyph_map.insert(key, coords);
+        coords
     }
 
     pub fn set_background(&mut self, background: [u8; 3]) {
@@ -160,8 +180,10 @@ impl Renderer {
             None
         };
 
-        let mut instances: Vec<CellInstance> = Vec::with_capacity(snapshot.cells.len() + 64);
-        let mut glyph_instances: Vec<CellInstance> = Vec::with_capacity(snapshot.cells.len());
+        let mut instances = std::mem::take(&mut self.instance_buffer);
+        let mut glyph_instances = std::mem::take(&mut self.glyph_buffer);
+        instances.clear();
+        glyph_instances.clear();
         let mut solid_count: u32 = 0;
 
         for cell in &snapshot.cells {
@@ -310,7 +332,7 @@ impl Renderer {
         }
 
         let glyph_count = glyph_instances.len() as u32;
-        instances.extend(glyph_instances);
+        instances.extend(glyph_instances.iter().copied());
 
         if snapshot.display_offset > 0 {
             let (screen_w, screen_h) = self.gpu.size;
@@ -346,6 +368,9 @@ impl Renderer {
         self.cell_pipeline.upload_uniform(&self.gpu.queue, &uniform);
         self.cell_pipeline
             .upload_instances(&self.gpu.device, &self.gpu.queue, &instances);
+
+        self.instance_buffer = instances;
+        self.glyph_buffer = glyph_instances;
 
         let bg = [
             self.background[0] as f64 / 255.0,

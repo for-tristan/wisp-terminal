@@ -7,6 +7,7 @@ pub struct GlyphAtlas {
     pub view: wgpu::TextureView,
     width: u32,
     height: u32,
+    pub generation: u64,
 }
 
 pub type CachedGlyphCoords = (rusttype::Rect<f32>, rusttype::Rect<i32>);
@@ -71,6 +72,7 @@ impl GlyphAtlas {
             view,
             width: Self::WIDTH,
             height: Self::HEIGHT,
+            generation: 0,
         }
     }
 
@@ -97,6 +99,7 @@ impl GlyphAtlas {
                     retry += 1;
                     self.cache.clear();
                     self.clear_texture(queue);
+                    self.generation += 1;
                 }
                 Err(_) => return None,
             }
