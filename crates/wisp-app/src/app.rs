@@ -15,6 +15,7 @@ use crate::input;
 #[derive(Debug)]
 pub enum UserEvent {
     PtyData,
+    BlinkTick,
 }
 
 pub struct WispApp {
@@ -25,6 +26,8 @@ pub struct WispApp {
     pub modifiers: ModifiersState,
     pub focused: bool,
     pub exited: bool,
+    pub blink_on: bool,
+    pub needs_redraw: bool,
     pub window_size: Option<PhysicalSize<u32>>,
 }
 
@@ -38,6 +41,8 @@ impl WispApp {
             modifiers: ModifiersState::default(),
             focused: false,
             exited: false,
+            blink_on: true,
+            needs_redraw: true,
             window_size: None,
         }
     }
@@ -126,8 +131,14 @@ impl ApplicationHandler<UserEvent> for WispApp {
         match event {
             UserEvent::PtyData => {
                 if self.pump() {
+                    self.needs_redraw = true;
                     self.request_redraw();
                 }
+            }
+            UserEvent::BlinkTick => {
+                self.blink_on = !self.blink_on;
+                self.needs_redraw = true;
+                self.request_redraw();
             }
         }
     }
@@ -159,6 +170,10 @@ impl ApplicationHandler<UserEvent> for WispApp {
                 self.modifiers = modifiers.state();
             }
             WindowEvent::KeyboardInput { event, .. } => {
+                if self.exited {
+                    event_loop.exit();
+                    return;
+                }
                 if let Some(bytes) = input::encode_key(&event, self.modifiers) {
                     let _ = self.emulator.input(&bytes);
                 }
@@ -188,14 +203,19 @@ impl ApplicationHandler<UserEvent> for WispApp {
                 }
             }
             WindowEvent::RedrawRequested => {
-                let damaged = self.pump();
-                if let Some(renderer) = &mut self.renderer {
-                    let snapshot = self.emulator.snapshot();
-                    if let Err(error) = renderer.render(&snapshot, true) {
-                        log::error!("frame render failed: {error}");
-                    }
+                if self.pump() {
+                    self.needs_redraw = true;
                 }
-                let _ = damaged;
+                if self.needs_redraw {
+                    if let Some(renderer) = &mut self.renderer {
+                        let snapshot = self.emulator.snapshot();
+                        let cursor_visible = self.blink_on || !self.config.cursor.blink;
+                        if let Err(error) = renderer.render(&snapshot, cursor_visible, self.focused) {
+                            log::error!("frame render failed: {error}");
+                        }
+                    }
+                    self.needs_redraw = false;
+                }
                 if self.exited {
                     event_loop.exit();
                 }

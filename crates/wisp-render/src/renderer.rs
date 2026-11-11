@@ -121,7 +121,7 @@ impl Renderer {
         self.gpu.resize(width, height);
     }
 
-    pub fn render(&mut self, snapshot: &Snapshot, cursor_visible: bool) -> Result<()> {
+    pub fn render(&mut self, snapshot: &Snapshot, cursor_visible: bool, focused: bool) -> Result<()> {
         let (cw, ch) = self.cell_size;
         let (ox, oy) = self.origin;
         let background = self.background;
@@ -131,7 +131,12 @@ impl Renderer {
         let line_thickness = (ch * 0.06).clamp(1.0, 2.5);
 
         let cursor = if cursor_visible {
-            snapshot.cursor
+            snapshot.cursor.map(|mut cursor| {
+                if !focused && cursor.kind != CursorKind::HollowBlock {
+                    cursor.kind = CursorKind::HollowBlock;
+                }
+                cursor
+            })
         } else {
             None
         };
