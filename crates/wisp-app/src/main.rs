@@ -10,6 +10,9 @@ use wisp_core::emulator::Emulator;
 use crate::app::{UserEvent, WispApp};
 
 fn main() -> Result<()> {
+    std::panic::set_hook(Box::new(|info| {
+        log::error!("wisp panicked: {info}");
+    }));
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
 
     let config = Config::load_or_default(None).context("loading configuration")?;

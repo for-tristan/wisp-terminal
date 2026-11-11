@@ -124,6 +124,14 @@ impl Renderer {
         self.origin = (x, y);
     }
 
+    pub fn origin(&self) -> (f32, f32) {
+        self.origin
+    }
+
+    pub fn cell_metrics(&self) -> (f32, f32) {
+        self.cell_size
+    }
+
     pub fn resize(&mut self, width: u32, height: u32) {
         self.gpu.resize(width, height);
     }

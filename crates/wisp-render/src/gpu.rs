@@ -84,10 +84,18 @@ impl GpuContext {
     where
         F: FnOnce(&mut wgpu::RenderPass<'_>),
     {
-        let frame = self
-            .surface
-            .get_current_texture()
-            .context("failed to acquire swapchain frame")?;
+        let mut frame = match self.surface.get_current_texture() {
+            Ok(frame) => frame,
+            Err(wgpu::SurfaceError::Outdated) | Err(wgpu::SurfaceError::Lost) => {
+                self.reconfigure();
+                self.surface
+                    .get_current_texture()
+                    .context("failed to acquire swapchain frame after reconfigure")?
+            }
+            Err(error) => {
+                return Err(anyhow::anyhow!("failed to acquire swapchain frame: {error}"));
+            }
+        };
         let view = frame
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());

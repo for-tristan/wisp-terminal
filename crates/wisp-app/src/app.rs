@@ -155,6 +155,7 @@ impl ApplicationHandler<UserEvent> for WispApp {
             .create_window(attributes)
             .expect("failed to create window");
         window.set_cursor(winit::window::Cursor::Icon(winit::window::CursorIcon::Text));
+        window.set_ime_allowed(true);
         self.window = Some(Arc::new(window));
 
         let theme = self.config.theme();
@@ -318,6 +319,16 @@ impl ApplicationHandler<UserEvent> for WispApp {
                 if self.needs_redraw {
                     if let Some(renderer) = &mut self.renderer {
                         let snapshot = self.emulator.snapshot();
+                        if let (Some(window), Some(cursor)) = (&self.window, snapshot.cursor) {
+                            let (ox, oy) = renderer.origin();
+                            let (cw, ch) = renderer.cell_metrics();
+                            let x = ox + cursor.column as f32 * cw;
+                            let y = oy + cursor.row as f32 * ch;
+                            window.set_ime_cursor_area(
+                                winit::dpi::PhysicalPosition::new(x, y),
+                                winit::dpi::PhysicalSize::new(cw, ch),
+                            );
+                        }
                         let cursor_visible = self.blink_on || !self.config.cursor.blink;
                         if let Err(error) = renderer.render(&snapshot, cursor_visible, self.focused) {
                             log::error!("frame render failed: {error}");
