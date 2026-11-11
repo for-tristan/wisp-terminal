@@ -195,12 +195,120 @@ pub fn builtin(name: &str) -> Option<Theme> {
                 bright_white: "#E1E3E9".to_string(),
             },
         }),
+        "nord" => Some(Theme {
+            name: "nord".to_string(),
+            palette: Palette {
+                background: "#2E3440".to_string(),
+                foreground: "#D8DEE9".to_string(),
+                cursor: "#D8DEE9".to_string(),
+                cursor_text: "#2E3440".to_string(),
+                selection_background: "#4C566A".to_string(),
+                selection_foreground: "#ECEFF4".to_string(),
+                black: "#3B4252".to_string(),
+                red: "#BF616A".to_string(),
+                green: "#A3BE8C".to_string(),
+                yellow: "#EBCB8B".to_string(),
+                blue: "#81A1C1".to_string(),
+                magenta: "#B48EAD".to_string(),
+                cyan: "#88C0D0".to_string(),
+                white: "#ECEFF4".to_string(),
+                bright_black: "#4C566A".to_string(),
+                bright_red: "#BF616A".to_string(),
+                bright_green: "#A3BE8C".to_string(),
+                bright_yellow: "#EBCB8B".to_string(),
+                bright_blue: "#81A1C1".to_string(),
+                bright_magenta: "#B48EAD".to_string(),
+                bright_cyan: "#8FBCBB".to_string(),
+                bright_white: "#ECEFF4".to_string(),
+            },
+        }),
+        "gruvbox-dark" => Some(Theme {
+            name: "gruvbox-dark".to_string(),
+            palette: Palette {
+                background: "#282828".to_string(),
+                foreground: "#EBDBB2".to_string(),
+                cursor: "#EBDBB2".to_string(),
+                cursor_text: "#282828".to_string(),
+                selection_background: "#504945".to_string(),
+                selection_foreground: "#FBF1C7".to_string(),
+                black: "#3C3836".to_string(),
+                red: "#CC241D".to_string(),
+                green: "#98971A".to_string(),
+                yellow: "#D79921".to_string(),
+                blue: "#458588".to_string(),
+                magenta: "#B16286".to_string(),
+                cyan: "#689D6A".to_string(),
+                white: "#A89984".to_string(),
+                bright_black: "#928374".to_string(),
+                bright_red: "#FB4934".to_string(),
+                bright_green: "#B8BB26".to_string(),
+                bright_yellow: "#FABD2F".to_string(),
+                bright_blue: "#83A598".to_string(),
+                bright_magenta: "#D3869B".to_string(),
+                bright_cyan: "#8EC07C".to_string(),
+                bright_white: "#EBDBB2".to_string(),
+            },
+        }),
+        "dracula" => Some(Theme {
+            name: "dracula".to_string(),
+            palette: Palette {
+                background: "#282A36".to_string(),
+                foreground: "#F8F8F2".to_string(),
+                cursor: "#F8F8F2".to_string(),
+                cursor_text: "#282A36".to_string(),
+                selection_background: "#44475A".to_string(),
+                selection_foreground: "#F8F8F2".to_string(),
+                black: "#21222C".to_string(),
+                red: "#FF5555".to_string(),
+                green: "#50FA7B".to_string(),
+                yellow: "#F1FA8C".to_string(),
+                blue: "#BD93F9".to_string(),
+                magenta: "#FF79C6".to_string(),
+                cyan: "#8BE9FD".to_string(),
+                white: "#F8F8F2".to_string(),
+                bright_black: "#6272A4".to_string(),
+                bright_red: "#FF6E6E".to_string(),
+                bright_green: "#69FF94".to_string(),
+                bright_yellow: "#FFFFA5".to_string(),
+                bright_blue: "#D6ACFF".to_string(),
+                bright_magenta: "#FF92DF".to_string(),
+                bright_cyan: "#A8FFFF".to_string(),
+                bright_white: "#FFFFFF".to_string(),
+            },
+        }),
+        "one-dark" => Some(Theme {
+            name: "one-dark".to_string(),
+            palette: Palette {
+                background: "#282C34".to_string(),
+                foreground: "#ABB2BF".to_string(),
+                cursor: "#ABB2BF".to_string(),
+                cursor_text: "#282C34".to_string(),
+                selection_background: "#3E4451".to_string(),
+                selection_foreground: "#FFFFFF".to_string(),
+                black: "#282C34".to_string(),
+                red: "#E06C75".to_string(),
+                green: "#98C379".to_string(),
+                yellow: "#E5C07B".to_string(),
+                blue: "#61AFEF".to_string(),
+                magenta: "#C678DD".to_string(),
+                cyan: "#56B6C2".to_string(),
+                white: "#ABB2BF".to_string(),
+                bright_black: "#5C6370".to_string(),
+                bright_red: "#E06C75".to_string(),
+                bright_green: "#98C379".to_string(),
+                bright_yellow: "#E5C07B".to_string(),
+                bright_blue: "#61AFEF".to_string(),
+                bright_magenta: "#C678DD".to_string(),
+                bright_cyan: "#56B6C2".to_string(),
+                bright_white: "#FFFFFF".to_string(),
+            },
+        }),
         _ => None,
     }
 }
 
 pub fn builtin_names() -> Vec<&'static str> {
-    vec!["wisp"]
+    vec!["wisp", "nord", "gruvbox-dark", "dracula", "one-dark"]
 }
 
 pub fn resolve(name: Option<&str>, override_colors: Option<Palette>) -> Theme {
@@ -242,5 +350,13 @@ mod tests {
     fn wisp_builtin_resolves() {
         let theme = builtin("wisp").unwrap();
         assert_eq!(theme.palette.color("cursor").unwrap().to_tuple(), (0xE1, 0xE3, 0xE9));
+    }
+
+    #[test]
+    fn all_builtin_themes_resolve_ansi() {
+        for name in builtin_names() {
+            let theme = builtin(name).unwrap_or_else(|| panic!("missing theme {name}"));
+            assert!(theme.palette.ansi().is_ok(), "theme {name} has invalid colors");
+        }
     }
 }
