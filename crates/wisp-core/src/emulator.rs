@@ -201,6 +201,10 @@ impl Emulator {
         &self.model
     }
 
+    pub fn snapshot(&self) -> crate::snapshot::Snapshot {
+        self.model.snapshot(&self.palette)
+    }
+
     pub fn theme_palette(&self) -> &Palette {
         &self.palette
     }

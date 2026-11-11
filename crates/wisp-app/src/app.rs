@@ -42,16 +42,6 @@ impl WispApp {
         }
     }
 
-    fn background_rgb(&self) -> [u8; 3] {
-        self.config
-            .theme()
-            .palette
-            .color("background")
-            .map(|color| color.to_tuple())
-            .map(|(r, g, b)| [r, g, b])
-            .unwrap_or([0x1A, 0x22, 0x2C])
-    }
-
     fn sync_grid(&mut self) {
         let Some(renderer) = &self.renderer else {
             return;
@@ -117,9 +107,9 @@ impl ApplicationHandler<UserEvent> for WispApp {
             .expect("failed to create window");
         self.window = Some(Arc::new(window));
 
-        let background = self.background_rgb();
+        let theme = self.config.theme();
         let font_config = self.config.font.clone();
-        match Renderer::new(self.window.clone().expect("window"), background, &font_config) {
+        match Renderer::new(self.window.clone().expect("window"), &theme, &font_config) {
             Ok(renderer) => {
                 let (cell_width, cell_height) = renderer.metrics();
                 self.emulator.set_cell_size(cell_width as u16, cell_height as u16);
@@ -200,7 +190,8 @@ impl ApplicationHandler<UserEvent> for WispApp {
             WindowEvent::RedrawRequested => {
                 let damaged = self.pump();
                 if let Some(renderer) = &mut self.renderer {
-                    if let Err(error) = renderer.render((0, 0)) {
+                    let snapshot = self.emulator.snapshot();
+                    if let Err(error) = renderer.render(&snapshot, true) {
                         log::error!("frame render failed: {error}");
                     }
                 }
