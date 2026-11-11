@@ -150,7 +150,9 @@ impl ApplicationHandler<UserEvent> for WispApp {
                 self.config.window.min_width,
                 self.config.window.min_height,
             ))
-            .with_transparent(self.config.window.opacity < 1.0);
+            .with_transparent(self.config.window.opacity < 1.0)
+            .with_decorations(self.config.window.decorations)
+            .with_maximized(self.config.window.maximized);
         let window = event_loop
             .create_window(attributes)
             .expect("failed to create window");

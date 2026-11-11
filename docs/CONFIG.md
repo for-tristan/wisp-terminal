@@ -54,6 +54,8 @@ cursor = "#E1E3E9"
 | `opacity` | f32 | 0.85 | Window opacity, 0.0 - 1.0 |
 | `title` | string | `wisp` | Initial window title; OSC title changes override it |
 | `min_width` / `min_height` | u32 | 320 / 180 | Minimum window size in pixels |
+| `decorations` | bool | true | Show OS window decorations |
+| `maximized` | bool | false | Start the window maximized |
 
 ### font
 

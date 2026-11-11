@@ -44,6 +44,8 @@ pub struct WindowConfig {
     pub title: String,
     pub min_width: u32,
     pub min_height: u32,
+    pub decorations: bool,
+    pub maximized: bool,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize)]
@@ -99,6 +101,8 @@ impl Default for WindowConfig {
             title: "wisp".to_string(),
             min_width: 320,
             min_height: 180,
+            decorations: true,
+            maximized: false,
         }
     }
 }
