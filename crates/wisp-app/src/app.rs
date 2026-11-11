@@ -171,7 +171,7 @@ impl ApplicationHandler<UserEvent> for WispApp {
             WindowEvent::RedrawRequested => {
                 let damaged = self.pump();
                 if let Some(renderer) = &mut self.renderer {
-                    if let Err(error) = renderer.render() {
+                    if let Err(error) = renderer.render((0, 0)) {
                         log::error!("frame render failed: {error}");
                     }
                 }

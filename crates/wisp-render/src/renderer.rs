@@ -4,33 +4,126 @@ use anyhow::Result;
 use winit::window::Window;
 
 use crate::gpu::GpuContext;
+use crate::pipeline::{CellPipeline, ScreenUniform};
 
 pub struct Renderer {
     gpu: GpuContext,
     background: [u8; 3],
+    cell_pipeline: CellPipeline,
+    cell_size: (f32, f32),
+    origin: (f32, f32),
 }
 
 impl Renderer {
     pub fn new(window: Arc<Window>, background: [u8; 3]) -> Result<Self> {
         let gpu = GpuContext::new(window)?;
-        Ok(Self { gpu, background })
+
+        let atlas_texture = gpu
+            .device
+            .create_texture(&wgpu::TextureDescriptor {
+                label: Some("wisp-atlas-placeholder"),
+                size: wgpu::Extent3d {
+                    width: 1,
+                    height: 1,
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: wgpu::TextureFormat::R8Unorm,
+                usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+                view_formats: &[],
+            });
+
+        gpu.queue.write_texture(
+            wgpu::TexelCopyTextureInfo {
+                texture: &atlas_texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            &[255u8],
+            wgpu::TexelCopyBufferLayout {
+                offset: 0,
+                bytes_per_row: Some(1),
+                rows_per_image: Some(1),
+            },
+            wgpu::Extent3d {
+                width: 1,
+                height: 1,
+                depth_or_array_layers: 1,
+            },
+        );
+
+        let atlas_view = atlas_texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let atlas_sampler = gpu.device.create_sampler(&wgpu::SamplerDescriptor {
+            label: Some("wisp-atlas-sampler"),
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Linear,
+            ..Default::default()
+        });
+
+        let cell_pipeline = CellPipeline::new(
+            &gpu.device,
+            gpu.surface_format,
+            &atlas_view,
+            &atlas_sampler,
+        );
+
+        Ok(Self {
+            gpu,
+            background,
+            cell_pipeline,
+            cell_size: (9.0, 18.0),
+            origin: (0.0, 0.0),
+        })
     }
 
     pub fn set_background(&mut self, background: [u8; 3]) {
         self.background = background;
     }
 
+    pub fn set_cell_size(&mut self, width: f32, height: f32) {
+        self.cell_size = (width.max(1.0), height.max(1.0));
+    }
+
+    pub fn set_origin(&mut self, x: f32, y: f32) {
+        self.origin = (x, y);
+    }
+
     pub fn resize(&mut self, width: u32, height: u32) {
         self.gpu.resize(width, height);
     }
 
-    pub fn render(&mut self) -> Result<()> {
+    pub fn render(&mut self, counts: (u32, u32)) -> Result<()> {
+        let (width, height) = self.gpu.size;
+        let uniform = ScreenUniform {
+            screen_size: [width as f32, height as f32],
+            cell_size: [self.cell_size.0, self.cell_size.1],
+            origin: [self.origin.0, self.origin.1],
+            pad: [0.0, 0.0],
+        };
+        self.cell_pipeline.upload_uniform(&self.gpu.queue, &uniform);
+        self.cell_pipeline
+            .upload_instances(&self.gpu.device, &self.gpu.queue, &[]);
+
         let bg = [
             self.background[0] as f64 / 255.0,
             self.background[1] as f64 / 255.0,
             self.background[2] as f64 / 255.0,
             1.0,
         ];
-        self.gpu.render(bg)
+
+        let pipeline = &self.cell_pipeline.pipeline;
+        let bind_group = &self.cell_pipeline.bind_group;
+        let instances = &self.cell_pipeline.instances;
+
+        self.gpu.render(bg, |pass| {
+            pass.set_pipeline(pipeline);
+            pass.set_bind_group(0, bind_group, &[]);
+            pass.set_vertex_buffer(0, instances.slice(..));
+            pass.draw(0..6, 0..counts.0);
+            pass.draw(0..6, counts.0..counts.0 + counts.1);
+        })
     }
 }

@@ -80,7 +80,10 @@ impl GpuContext {
         }
     }
 
-    pub fn render(&self, background: [f64; 4]) -> Result<()> {
+    pub fn render<F>(&self, background: [f64; 4], draw: F) -> Result<()>
+    where
+        F: FnOnce(&mut wgpu::RenderPass<'_>),
+    {
         let frame = self
             .surface
             .get_current_texture()
@@ -94,8 +97,8 @@ impl GpuContext {
                 label: Some("wisp-frame"),
             });
         {
-            let _pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("wisp-clear"),
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("wisp-draw"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &view,
                     resolve_target: None,
@@ -113,6 +116,7 @@ impl GpuContext {
                 timestamp_writes: None,
                 occlusion_query_set: None,
             });
+            draw(&mut pass);
         }
         self.queue.submit(Some(encoder.finish()));
         frame.present();
