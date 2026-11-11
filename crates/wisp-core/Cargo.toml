@@ -7,4 +7,9 @@ rust-version.workspace = true
 repository.workspace = true
 
 [dependencies]
+portable-pty = { workspace = true }
+alacritty_terminal = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+log = { workspace = true }
 wisp-config = { workspace = true }

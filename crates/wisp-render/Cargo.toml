@@ -7,5 +7,11 @@ rust-version.workspace = true
 repository.workspace = true
 
 [dependencies]
+wgpu = { workspace = true }
+bytemuck = { workspace = true }
+font-kit = { workspace = true }
+rusttype = { workspace = true }
+anyhow = { workspace = true }
+log = { workspace = true }
 wisp-config = { workspace = true }
 wisp-core = { workspace = true }
