@@ -1,0 +1,16 @@
+[package]
+name = "wisp-app"
+description = "The wisp binary: winit event loop, input handling, window lifecycle"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "wisp"
+path = "src/main.rs"
+
+[dependencies]
+wisp-config = { workspace = true }
+wisp-core = { workspace = true }
+wisp-render = { workspace = true }

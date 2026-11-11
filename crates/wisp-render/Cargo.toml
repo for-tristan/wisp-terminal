@@ -1,0 +1,11 @@
+[package]
+name = "wisp-render"
+description = "wgpu-based cell grid renderer, fonts and glyph atlas for Wisp"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+
+[dependencies]
+wisp-config = { workspace = true }
+wisp-core = { workspace = true }
