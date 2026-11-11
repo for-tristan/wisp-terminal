@@ -38,9 +38,11 @@ pub struct Emulator {
 }
 
 impl Emulator {
-    pub fn new(config: &Config) -> Result<Self> {
+    pub fn new(config: &Config, wake: Option<Box<dyn Fn() + Send>>) -> Result<Self> {
         let (cols, rows) = (80usize, 24usize);
-        let pty = PtySession::spawn(&PtyConfig::from_config(config))
+        let mut pty_config = PtyConfig::from_config(config);
+        pty_config.wake = wake;
+        let pty = PtySession::spawn(&mut pty_config)
             .map_err(|e| anyhow!("failed to start shell session: {e}"))
             .context("spawning pty")?;
         log::info!("started shell {} (pid {:?})", pty.shell(), pty.pid());
@@ -152,6 +154,15 @@ impl Emulator {
     pub fn paste(&mut self, text: &str) -> Result<()> {
         let encoded = self.model.encode_paste(text);
         self.write(&encoded)
+    }
+
+    pub fn notify_exit(&mut self, code: Option<u32>) {
+        let message = match code {
+            Some(0) => "\r\n[process exited]\r\n".to_string(),
+            Some(code) => format!("\r\n[process exited with code {code}]\r\n"),
+            None => "\r\n[process exited]\r\n".to_string(),
+        };
+        self.model.feed(message.as_bytes());
     }
 
     pub fn resize(&mut self, cols: usize, rows: usize) -> Result<()> {

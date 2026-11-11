@@ -21,6 +21,7 @@ pub struct PtyConfig {
     pub working_dir: Option<std::path::PathBuf>,
     pub initial_cols: u16,
     pub initial_rows: u16,
+    pub wake: Option<Box<dyn Fn() + Send>>,
 }
 
 impl PtyConfig {
@@ -30,6 +31,7 @@ impl PtyConfig {
             working_dir: None,
             initial_cols: 80,
             initial_rows: 24,
+            wake: None,
         }
     }
 }
@@ -45,7 +47,7 @@ pub struct PtySession {
 }
 
 impl PtySession {
-    pub fn spawn(config: &PtyConfig) -> Result<Self, PtyError> {
+    pub fn spawn(config: &mut PtyConfig) -> Result<Self, PtyError> {
         let shell = resolve_shell(config.shell.as_deref());
         let pty_system = portable_pty::native_pty_system();
         let pair = pty_system
@@ -94,11 +96,12 @@ impl PtySession {
             .master
             .take_writer()
             .map_err(|e| PtyError::Open(e.to_string()))?;
+        let wake = config.wake.take();
 
         let (tx, rx) = mpsc::channel::<Vec<u8>>();
         std::thread::Builder::new()
             .name("wisp-pty-reader".to_string())
-            .spawn(move || run_reader(reader, tx))
+            .spawn(move || run_reader(reader, tx, wake))
             .map_err(|e| PtyError::Open(e.to_string()))?;
 
         Ok(Self {
@@ -162,7 +165,11 @@ impl Drop for PtySession {
     }
 }
 
-fn run_reader<R: Read + Send>(mut reader: R, tx: Sender<Vec<u8>>) {
+fn run_reader<R: Read + Send>(
+    mut reader: R,
+    tx: Sender<Vec<u8>>,
+    wake: Option<Box<dyn Fn() + Send>>,
+) {
     let mut buffer = vec![0u8; 8192];
     loop {
         match reader.read(&mut buffer) {
@@ -170,6 +177,9 @@ fn run_reader<R: Read + Send>(mut reader: R, tx: Sender<Vec<u8>>) {
             Ok(n) => {
                 if tx.send(buffer[..n].to_vec()).is_err() {
                     break;
+                }
+                if let Some(wake) = &wake {
+                    wake();
                 }
             }
             Err(ref e) if e.kind() == std::io::ErrorKind::Interrupted => continue,
