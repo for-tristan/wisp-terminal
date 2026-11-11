@@ -86,9 +86,10 @@ impl GlyphAtlas {
         loop {
             let result = {
                 let texture = &self.texture;
-                self.cache.cache_queued(|rect: rusttype::Rect<u32>, data: &[u8]| {
-                    upload_rect(queue, texture, rect, data);
-                })
+                self.cache
+                    .cache_queued(|rect: rusttype::Rect<u32>, data: &[u8]| {
+                        upload_rect(queue, texture, rect, data);
+                    })
             };
             match result {
                 Ok(_) => break,

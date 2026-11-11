@@ -1,6 +1,6 @@
 use alacritty_terminal::term::cell::Flags as TermFlags;
 use alacritty_terminal::vte::ansi::{Color, CursorShape, NamedColor};
-use wisp_config::{Palette, Color as ConfigColor};
+use wisp_config::{Color as ConfigColor, Palette};
 
 pub const FLAG_BOLD: u16 = 1 << 0;
 pub const FLAG_ITALIC: u16 = 1 << 1;
@@ -183,11 +183,9 @@ impl crate::terminal::TerminalModel {
             .map(|(r, g, b)| [r, g, b]);
 
         let mut cells = Vec::with_capacity(columns * screen_lines);
-        let mut index = 0usize;
-        for cell in content.display_iter {
+        for (index, cell) in content.display_iter.enumerate() {
             let row = (index / columns) as u16;
             let column = (index % columns) as u16;
-            index += 1;
 
             if cell
                 .flags
@@ -206,9 +204,11 @@ impl crate::terminal::TerminalModel {
                 fg = dim(fg);
             }
 
-            if let (Some(range), Some(sel_bg), Some(sel_fg)) =
-                (&content.selection, selection_background, selection_foreground)
-            {
+            if let (Some(range), Some(sel_bg), Some(sel_fg)) = (
+                &content.selection,
+                selection_background,
+                selection_foreground,
+            ) {
                 if range.contains(cell.point) {
                     bg = sel_bg;
                     fg = sel_fg;

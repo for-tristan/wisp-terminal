@@ -4,7 +4,8 @@ use wisp_config::FontConfig;
 const BUNDLED_REGULAR: &[u8] = include_bytes!("../../../assets/fonts/IBMPlexMono-Regular.ttf");
 const BUNDLED_BOLD: &[u8] = include_bytes!("../../../assets/fonts/IBMPlexMono-Bold.ttf");
 const BUNDLED_ITALIC: &[u8] = include_bytes!("../../../assets/fonts/IBMPlexMono-Italic.ttf");
-const BUNDLED_BOLD_ITALIC: &[u8] = include_bytes!("../../../assets/fonts/IBMPlexMono-BoldItalic.ttf");
+const BUNDLED_BOLD_ITALIC: &[u8] =
+    include_bytes!("../../../assets/fonts/IBMPlexMono-BoldItalic.ttf");
 
 pub const FONT_REGULAR: usize = 0;
 pub const FONT_BOLD: usize = 1;
@@ -109,7 +110,12 @@ fn load_style_variants(config: &FontConfig) -> StyleData {
         "system family {:?} unavailable, using bundled IBM Plex Mono",
         config.family
     );
-    (leak_bytes(BUNDLED_REGULAR), leak_bytes(BUNDLED_BOLD), leak_bytes(BUNDLED_ITALIC), leak_bytes(BUNDLED_BOLD_ITALIC))
+    (
+        leak_bytes(BUNDLED_REGULAR),
+        leak_bytes(BUNDLED_BOLD),
+        leak_bytes(BUNDLED_ITALIC),
+        leak_bytes(BUNDLED_BOLD_ITALIC),
+    )
 }
 
 fn load_system_family(family: &str) -> Option<StyleData> {

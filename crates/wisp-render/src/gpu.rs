@@ -93,7 +93,9 @@ impl GpuContext {
                     .context("failed to acquire swapchain frame after reconfigure")?
             }
             Err(error) => {
-                return Err(anyhow::anyhow!("failed to acquire swapchain frame: {error}"));
+                return Err(anyhow::anyhow!(
+                    "failed to acquire swapchain frame: {error}"
+                ));
             }
         };
         let view = frame

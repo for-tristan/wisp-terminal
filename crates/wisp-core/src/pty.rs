@@ -81,7 +81,7 @@ impl PtySession {
         std::thread::Builder::new()
             .name("wisp-pty-waiter".to_string())
             .spawn(move || {
-                let code = child.wait().ok().map(|status| status.exit_code() as u32);
+                let code = child.wait().ok().map(|status| status.exit_code());
                 if let Ok(mut slot) = exit_state_thread.lock() {
                     *slot = Some(code);
                 }
@@ -144,14 +144,14 @@ impl PtySession {
     }
 
     pub fn has_exited(&self) -> bool {
-        self.exit_state.lock().map(|state| state.is_some()).unwrap_or(false)
+        self.exit_state
+            .lock()
+            .map(|state| state.is_some())
+            .unwrap_or(false)
     }
 
     pub fn exit_code(&self) -> Option<Option<u32>> {
-        self.exit_state
-            .lock()
-            .ok()
-            .and_then(|state| *state)
+        self.exit_state.lock().ok().and_then(|state| *state)
     }
 
     pub fn kill(&mut self) {

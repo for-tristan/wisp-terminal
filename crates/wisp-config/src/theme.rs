@@ -133,7 +133,11 @@ impl Palette {
             "bright_magenta" => &self.bright_magenta,
             "bright_cyan" => &self.bright_cyan,
             "bright_white" => &self.bright_white,
-            _ => return Err(ConfigError::InvalidColor { value: key.to_string() }),
+            _ => {
+                return Err(ConfigError::InvalidColor {
+                    value: key.to_string(),
+                })
+            }
         };
         Color::parse(value)
     }
@@ -349,14 +353,20 @@ mod tests {
     #[test]
     fn wisp_builtin_resolves() {
         let theme = builtin("wisp").unwrap();
-        assert_eq!(theme.palette.color("cursor").unwrap().to_tuple(), (0xE1, 0xE3, 0xE9));
+        assert_eq!(
+            theme.palette.color("cursor").unwrap().to_tuple(),
+            (0xE1, 0xE3, 0xE9)
+        );
     }
 
     #[test]
     fn all_builtin_themes_resolve_ansi() {
         for name in builtin_names() {
             let theme = builtin(name).unwrap_or_else(|| panic!("missing theme {name}"));
-            assert!(theme.palette.ansi().is_ok(), "theme {name} has invalid colors");
+            assert!(
+                theme.palette.ansi().is_ok(),
+                "theme {name} has invalid colors"
+            );
         }
     }
 }

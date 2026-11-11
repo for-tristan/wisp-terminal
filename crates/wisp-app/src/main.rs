@@ -38,11 +38,14 @@ fn main() -> Result<()> {
 
     let wake_proxy = proxy.clone();
     let working_dir = cli.working_dir.clone();
-    let emulator =
-        Emulator::new(&config, working_dir, Some(Box::new(move || {
+    let emulator = Emulator::new(
+        &config,
+        working_dir,
+        Some(Box::new(move || {
             let _ = wake_proxy.send_event(UserEvent::PtyData);
-        })))
-        .context("starting shell session")?;
+        })),
+    )
+    .context("starting shell session")?;
 
     let mut app = WispApp::new(config.clone(), emulator);
 

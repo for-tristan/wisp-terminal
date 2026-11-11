@@ -8,7 +8,6 @@ use alacritty_terminal::term::{Config as TermConfig, Term, TermMode};
 use alacritty_terminal::vte::ansi::Processor;
 use wisp_config::Config;
 
-
 #[derive(Clone)]
 pub struct EventProxy {
     tx: mpsc::Sender<Event>,

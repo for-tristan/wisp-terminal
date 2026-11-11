@@ -98,9 +98,7 @@ impl Emulator {
                     }
                 }
                 Event::Title(title) => {
-                    result
-                        .events
-                        .push(AppEvent::TitleChanged(title));
+                    result.events.push(AppEvent::TitleChanged(title));
                 }
                 Event::ResetTitle => {
                     result
@@ -148,9 +146,7 @@ impl Emulator {
     }
 
     pub fn write(&mut self, bytes: &[u8]) -> Result<()> {
-        self.pty
-            .write(bytes)
-            .context("writing to pty")
+        self.pty.write(bytes).context("writing to pty")
     }
 
     pub fn input(&mut self, bytes: &[u8]) -> Result<()> {
@@ -253,10 +249,7 @@ impl Emulator {
 
     pub fn term_colors(&self) -> TermColors {
         let mut colors = TermColors::default();
-        let ansi = self
-            .palette
-            .ansi()
-            .unwrap_or_else(|_| fallback_ansi());
+        let ansi = self.palette.ansi().unwrap_or_else(|_| fallback_ansi());
         for (index, color) in ansi.iter().enumerate() {
             let (r, g, b) = color.to_tuple();
             colors[index] = Some(Rgb { r, g, b });
@@ -277,10 +270,7 @@ impl Emulator {
     }
 
     fn resolve_color(&self, index: usize) -> Rgb {
-        let ansi = self
-            .palette
-            .ansi()
-            .unwrap_or_else(|_| fallback_ansi());
+        let ansi = self.palette.ansi().unwrap_or_else(|_| fallback_ansi());
         let rgb = indexed_color(
             index,
             &ansi

@@ -26,7 +26,7 @@ pub enum ConfigError {
     InvalidValue { field: &'static str, reason: String },
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Default, Deserialize)]
 #[serde(default)]
 pub struct Config {
     pub window: WindowConfig,
@@ -89,18 +89,6 @@ pub enum CursorStyle {
 pub struct ThemeConfig {
     pub name: Option<String>,
     pub colors: Option<Palette>,
-}
-
-impl Default for Config {
-    fn default() -> Self {
-        Self {
-            window: WindowConfig::default(),
-            font: FontConfig::default(),
-            terminal: TerminalConfig::default(),
-            cursor: CursorConfig::default(),
-            theme: ThemeConfig::default(),
-        }
-    }
 }
 
 impl Default for WindowConfig {

@@ -169,7 +169,8 @@ impl ApplicationHandler<UserEvent> for WispApp {
         ) {
             Ok(renderer) => {
                 let (cell_width, cell_height) = renderer.metrics();
-                self.emulator.set_cell_size(cell_width as u16, cell_height as u16);
+                self.emulator
+                    .set_cell_size(cell_width as u16, cell_height as u16);
                 self.renderer = Some(renderer);
                 self.sync_grid();
             }
@@ -195,7 +196,12 @@ impl ApplicationHandler<UserEvent> for WispApp {
         }
     }
 
-    fn window_event(&mut self, event_loop: &ActiveEventLoop, window_id: WindowId, event: WindowEvent) {
+    fn window_event(
+        &mut self,
+        event_loop: &ActiveEventLoop,
+        window_id: WindowId,
+        event: WindowEvent,
+    ) {
         let is_main_window = self
             .window
             .as_ref()
@@ -252,17 +258,14 @@ impl ApplicationHandler<UserEvent> for WispApp {
                             .mouse
                             .last_click
                             .is_some_and(|last| now.duration_since(last).as_millis() < 400);
-                        self.mouse.click_count = if multi {
-                            self.mouse.click_count + 1
-                        } else {
-                            1
-                        };
+                        self.mouse.click_count = if multi { self.mouse.click_count + 1 } else { 1 };
                         self.mouse.last_click = Some(now);
                         self.mouse.left_down = true;
                         if let Some(point) =
                             position.and_then(|position| self.mouse.viewport_point(position))
                         {
-                            if let Some(ty) = input::selection_type_for_click(self.mouse.click_count)
+                            if let Some(ty) =
+                                input::selection_type_for_click(self.mouse.click_count)
                             {
                                 self.emulator.begin_selection(point, ty);
                                 self.needs_redraw = true;
@@ -330,7 +333,8 @@ impl ApplicationHandler<UserEvent> for WispApp {
                             );
                         }
                         let cursor_visible = self.blink_on || !self.config.cursor.blink;
-                        if let Err(error) = renderer.render(&snapshot, cursor_visible, self.focused) {
+                        if let Err(error) = renderer.render(&snapshot, cursor_visible, self.focused)
+                        {
                             log::error!("frame render failed: {error}");
                         }
                     }

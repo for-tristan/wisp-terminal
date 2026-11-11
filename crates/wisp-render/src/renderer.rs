@@ -4,14 +4,14 @@ use anyhow::Result;
 use winit::window::Window;
 use wisp_config::{Color as ConfigColor, Theme};
 use wisp_core::snapshot::{
-    FLAG_BOLD, FLAG_DOUBLE_UNDERLINE, FLAG_HIDDEN, FLAG_ITALIC, FLAG_STRIKEOUT,
-    FLAG_UNDERLINE, CursorKind, Snapshot,
+    CursorKind, Snapshot, FLAG_BOLD, FLAG_DOUBLE_UNDERLINE, FLAG_HIDDEN, FLAG_ITALIC,
+    FLAG_STRIKEOUT, FLAG_UNDERLINE,
 };
 
 use crate::atlas::GlyphAtlas;
 use crate::font::{FontStack, StyleVariant};
 use crate::gpu::GpuContext;
-use crate::pipeline::{CellInstance, CellPipeline, KIND_GLYPH, KIND_SOLID, ScreenUniform};
+use crate::pipeline::{CellInstance, CellPipeline, ScreenUniform, KIND_GLYPH, KIND_SOLID};
 
 fn rgb(color: [u8; 3]) -> [f32; 4] {
     [
@@ -59,12 +59,8 @@ impl Renderer {
             ..Default::default()
         });
 
-        let cell_pipeline = CellPipeline::new(
-            &gpu.device,
-            gpu.surface_format,
-            &atlas.view,
-            &atlas_sampler,
-        );
+        let cell_pipeline =
+            CellPipeline::new(&gpu.device, gpu.surface_format, &atlas.view, &atlas_sampler);
 
         let cell_size = (
             font_stack.metrics.width.max(1.0),
@@ -86,7 +82,10 @@ impl Renderer {
     }
 
     pub fn metrics(&self) -> (f32, f32) {
-        (self.font_stack.metrics.width, self.font_stack.metrics.height)
+        (
+            self.font_stack.metrics.width,
+            self.font_stack.metrics.height,
+        )
     }
 
     pub fn ensure_glyph(
@@ -136,7 +135,12 @@ impl Renderer {
         self.gpu.resize(width, height);
     }
 
-    pub fn render(&mut self, snapshot: &Snapshot, cursor_visible: bool, focused: bool) -> Result<()> {
+    pub fn render(
+        &mut self,
+        snapshot: &Snapshot,
+        cursor_visible: bool,
+        focused: bool,
+    ) -> Result<()> {
         let (cw, ch) = self.cell_size;
         let (ox, oy) = self.origin;
         let background = self.background;
@@ -340,11 +344,8 @@ impl Renderer {
             pad: [0.0, 0.0],
         };
         self.cell_pipeline.upload_uniform(&self.gpu.queue, &uniform);
-        self.cell_pipeline.upload_instances(
-            &self.gpu.device,
-            &self.gpu.queue,
-            &instances,
-        );
+        self.cell_pipeline
+            .upload_instances(&self.gpu.device, &self.gpu.queue, &instances);
 
         let bg = [
             self.background[0] as f64 / 255.0,
@@ -367,13 +368,7 @@ impl Renderer {
     }
 }
 
-fn hollow_block_quads(
-    x: f32,
-    y: f32,
-    w: f32,
-    h: f32,
-    t: f32,
-) -> [(f32, f32, f32, f32); 4] {
+fn hollow_block_quads(x: f32, y: f32, w: f32, h: f32, t: f32) -> [(f32, f32, f32, f32); 4] {
     [
         (x, y, w, t),
         (x, y + h - t, w, t),

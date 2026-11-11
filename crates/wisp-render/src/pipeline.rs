@@ -171,7 +171,12 @@ impl CellPipeline {
         queue.write_buffer(&self.uniform, 0, bytemuck::bytes_of(uniform));
     }
 
-    pub fn upload_instances(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, data: &[CellInstance]) {
+    pub fn upload_instances(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        data: &[CellInstance],
+    ) {
         if data.len() > self.capacity {
             self.capacity = data.len().next_power_of_two();
             self.instances.destroy();
@@ -183,11 +188,7 @@ impl CellPipeline {
             });
         }
         if !data.is_empty() {
-            queue.write_buffer(
-                &self.instances,
-                0,
-                bytemuck::cast_slice(data),
-            );
+            queue.write_buffer(&self.instances, 0, bytemuck::cast_slice(data));
         }
     }
 }
