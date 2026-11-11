@@ -4,7 +4,8 @@ use anyhow::Result;
 use winit::window::Window;
 use wisp_config::FontConfig;
 
-use crate::font::FontStack;
+use crate::atlas::GlyphAtlas;
+use crate::font::{FontStack, StyleVariant};
 use crate::gpu::GpuContext;
 use crate::pipeline::{CellPipeline, ScreenUniform};
 
@@ -12,6 +13,7 @@ pub struct Renderer {
     gpu: GpuContext,
     background: [u8; 3],
     pub font_stack: FontStack,
+    pub atlas: GlyphAtlas,
     cell_pipeline: CellPipeline,
     cell_size: (f32, f32),
     origin: (f32, f32),
@@ -21,45 +23,8 @@ impl Renderer {
     pub fn new(window: Arc<Window>, background: [u8; 3], font_config: &FontConfig) -> Result<Self> {
         let gpu = GpuContext::new(window)?;
         let font_stack = FontStack::load(font_config)?;
+        let atlas = GlyphAtlas::new(&gpu.device);
 
-        let atlas_texture = gpu
-            .device
-            .create_texture(&wgpu::TextureDescriptor {
-                label: Some("wisp-atlas-placeholder"),
-                size: wgpu::Extent3d {
-                    width: 1,
-                    height: 1,
-                    depth_or_array_layers: 1,
-                },
-                mip_level_count: 1,
-                sample_count: 1,
-                dimension: wgpu::TextureDimension::D2,
-                format: wgpu::TextureFormat::R8Unorm,
-                usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-                view_formats: &[],
-            });
-
-        gpu.queue.write_texture(
-            wgpu::TexelCopyTextureInfo {
-                texture: &atlas_texture,
-                mip_level: 0,
-                origin: wgpu::Origin3d::ZERO,
-                aspect: wgpu::TextureAspect::All,
-            },
-            &[255u8],
-            wgpu::TexelCopyBufferLayout {
-                offset: 0,
-                bytes_per_row: Some(1),
-                rows_per_image: Some(1),
-            },
-            wgpu::Extent3d {
-                width: 1,
-                height: 1,
-                depth_or_array_layers: 1,
-            },
-        );
-
-        let atlas_view = atlas_texture.create_view(&wgpu::TextureViewDescriptor::default());
         let atlas_sampler = gpu.device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("wisp-atlas-sampler"),
             mag_filter: wgpu::FilterMode::Linear,
@@ -70,7 +35,7 @@ impl Renderer {
         let cell_pipeline = CellPipeline::new(
             &gpu.device,
             gpu.surface_format,
-            &atlas_view,
+            &atlas.view,
             &atlas_sampler,
         );
 
@@ -83,6 +48,7 @@ impl Renderer {
             gpu,
             background,
             font_stack,
+            atlas,
             cell_pipeline,
             cell_size,
             origin: (0.0, 0.0),
@@ -91,6 +57,20 @@ impl Renderer {
 
     pub fn metrics(&self) -> (f32, f32) {
         (self.font_stack.metrics.width, self.font_stack.metrics.height)
+    }
+
+    pub fn ensure_glyph(
+        &mut self,
+        variant: StyleVariant,
+        ch: char,
+    ) -> Option<crate::atlas::CachedGlyphCoords> {
+        let font = self.font_stack.font(variant);
+        let glyph = font
+            .glyph(ch)
+            .scaled(self.font_stack.scale)
+            .positioned(rusttype::point(0.0, 0.0));
+        self.atlas
+            .cache_glyph(&self.gpu.queue, glyph, variant.font_id())
     }
 
     pub fn set_background(&mut self, background: [u8; 3]) {
