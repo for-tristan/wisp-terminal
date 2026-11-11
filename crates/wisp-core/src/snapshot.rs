@@ -336,14 +336,8 @@ mod tests {
         let palette = wisp_config::theme::builtin("wisp")
             .expect("wisp theme")
             .palette;
-        let background = palette
-            .color("background")
-            .expect("background")
-            .to_tuple();
-        let foreground = palette
-            .color("foreground")
-            .expect("foreground")
-            .to_tuple();
+        let background = palette.color("background").expect("background").to_tuple();
+        let foreground = palette.color("foreground").expect("foreground").to_tuple();
         let snapshot = model.snapshot(&palette);
         let cell = &snapshot.cells[0];
         assert_eq!(cell.character, 'X');

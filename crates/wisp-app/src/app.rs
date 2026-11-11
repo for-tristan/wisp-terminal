@@ -240,9 +240,14 @@ impl ApplicationHandler<UserEvent> for WispApp {
                             self.emulator.clear_selection();
                             self.needs_redraw = true;
                             let _ = self.emulator.input(&bytes);
+                            self.request_redraw();
                         }
                         EncodedInput::Copy => self.copy_selection(),
                         EncodedInput::Paste => self.paste_clipboard(),
+                        EncodedInput::ScrollPageUp => self.emulator.scroll_page_up(),
+                        EncodedInput::ScrollPageDown => self.emulator.scroll_page_down(),
+                        EncodedInput::ScrollTop => self.emulator.scroll_top(),
+                        EncodedInput::ScrollBottom => self.emulator.scroll_bottom(),
                     }
                 }
             }

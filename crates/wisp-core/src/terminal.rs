@@ -104,6 +104,22 @@ impl TerminalModel {
         self.term.scroll_display(Scroll::Delta(delta_lines));
     }
 
+    pub fn scroll_page_up(&mut self) {
+        self.term.scroll_display(Scroll::PageUp);
+    }
+
+    pub fn scroll_page_down(&mut self) {
+        self.term.scroll_display(Scroll::PageDown);
+    }
+
+    pub fn scroll_top(&mut self) {
+        self.term.scroll_display(Scroll::Top);
+    }
+
+    pub fn scroll_bottom(&mut self) {
+        self.term.scroll_display(Scroll::Bottom);
+    }
+
     pub fn display_offset(&self) -> usize {
         self.term.grid().display_offset()
     }

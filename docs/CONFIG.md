@@ -99,7 +99,8 @@ Palette keys: `background`, `foreground`, `cursor`, `cursor_text`,
 | Paste | Ctrl+Shift+V or middle click |
 | Extend selection | Right click or left drag |
 | Word / line select | Double / triple click |
-| Scrollback | Mouse wheel |
+| Scrollback | Mouse wheel or Shift+PageUp/PageDown |
+| Scroll to top / bottom | Ctrl+Shift+Home / Ctrl+Shift+End |
 
 ## Behavior notes
 

@@ -183,6 +183,22 @@ impl Emulator {
         self.model.scroll(delta_lines);
     }
 
+    pub fn scroll_page_up(&mut self) {
+        self.model.scroll_page_up();
+    }
+
+    pub fn scroll_page_down(&mut self) {
+        self.model.scroll_page_down();
+    }
+
+    pub fn scroll_top(&mut self) {
+        self.model.scroll_top();
+    }
+
+    pub fn scroll_bottom(&mut self) {
+        self.model.scroll_bottom();
+    }
+
     pub fn wheel(&mut self, lines: i32) -> Result<()> {
         if lines == 0 {
             return Ok(());

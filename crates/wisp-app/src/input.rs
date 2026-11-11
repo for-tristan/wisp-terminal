@@ -9,6 +9,10 @@ pub enum EncodedInput {
     Bytes(Vec<u8>),
     Copy,
     Paste,
+    ScrollPageUp,
+    ScrollPageDown,
+    ScrollTop,
+    ScrollBottom,
 }
 
 pub struct MouseState {
@@ -60,6 +64,16 @@ pub fn encode_key(event: &KeyEvent, modifiers: ModifiersState) -> Option<Encoded
     let ctrl = modifiers.control_key();
     let alt = modifiers.alt_key();
     let shift = modifiers.shift_key();
+
+    if shift {
+        match (&event.logical_key, ctrl) {
+            (Key::Named(NamedKey::PageUp), _) => return Some(EncodedInput::ScrollPageUp),
+            (Key::Named(NamedKey::PageDown), _) => return Some(EncodedInput::ScrollPageDown),
+            (Key::Named(NamedKey::Home), true) => return Some(EncodedInput::ScrollTop),
+            (Key::Named(NamedKey::End), true) => return Some(EncodedInput::ScrollBottom),
+            _ => {}
+        }
+    }
 
     if ctrl && shift {
         match &event.logical_key {
