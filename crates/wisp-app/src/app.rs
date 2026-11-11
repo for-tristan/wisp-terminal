@@ -154,11 +154,18 @@ impl ApplicationHandler<UserEvent> for WispApp {
         let window = event_loop
             .create_window(attributes)
             .expect("failed to create window");
+        window.set_cursor(winit::window::Cursor::Icon(winit::window::CursorIcon::Text));
         self.window = Some(Arc::new(window));
 
         let theme = self.config.theme();
         let font_config = self.config.font.clone();
-        match Renderer::new(self.window.clone().expect("window"), &theme, &font_config) {
+        let opacity = self.config.window.opacity;
+        match Renderer::new(
+            self.window.clone().expect("window"),
+            &theme,
+            &font_config,
+            opacity,
+        ) {
             Ok(renderer) => {
                 let (cell_width, cell_height) = renderer.metrics();
                 self.emulator.set_cell_size(cell_width as u16, cell_height as u16);

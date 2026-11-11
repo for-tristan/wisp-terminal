@@ -31,6 +31,7 @@ fn rgb_alpha(color: [u8; 3], alpha: f32) -> [f32; 4] {
 pub struct Renderer {
     gpu: GpuContext,
     background: [u8; 3],
+    opacity: f32,
     cursor: [u8; 3],
     cursor_text: [u8; 3],
     pub font_stack: FontStack,
@@ -41,7 +42,12 @@ pub struct Renderer {
 }
 
 impl Renderer {
-    pub fn new(window: Arc<Window>, theme: &Theme, font_config: &wisp_config::FontConfig) -> Result<Self> {
+    pub fn new(
+        window: Arc<Window>,
+        theme: &Theme,
+        font_config: &wisp_config::FontConfig,
+        opacity: f32,
+    ) -> Result<Self> {
         let gpu = GpuContext::new(window)?;
         let font_stack = FontStack::load(font_config)?;
         let atlas = GlyphAtlas::new(&gpu.device);
@@ -68,6 +74,7 @@ impl Renderer {
         Ok(Self {
             gpu,
             background: palette_rgb(&theme.palette, "background"),
+            opacity: opacity.clamp(0.0, 1.0),
             cursor: palette_rgb(&theme.palette, "cursor"),
             cursor_text: palette_rgb(&theme.palette, "cursor_text"),
             font_stack,
@@ -335,7 +342,7 @@ impl Renderer {
             self.background[0] as f64 / 255.0,
             self.background[1] as f64 / 255.0,
             self.background[2] as f64 / 255.0,
-            1.0,
+            self.opacity as f64,
         ];
 
         let pipeline = &self.cell_pipeline.pipeline;
