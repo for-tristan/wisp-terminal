@@ -9,6 +9,7 @@ use anyhow::{anyhow, Context, Result};
 use wisp_config::{Config, Palette};
 
 use crate::pty::{PtyConfig, PtySession};
+use crate::snapshot::indexed_color;
 use crate::terminal::TerminalModel;
 
 #[derive(Clone)]
@@ -223,27 +224,20 @@ impl Emulator {
             .palette
             .ansi()
             .unwrap_or_else(|_| fallback_ansi());
-        if index < 16 {
-            let (r, g, b) = ansi[index].to_tuple();
-            return Rgb { r, g, b };
-        }
-        if (16..232).contains(&index) {
-            let index = index - 16;
-            let r = (index / 36) as u8;
-            let g = ((index / 6) % 6) as u8;
-            let b = (index % 6) as u8;
-            let channel = |v: u8| if v == 0 { 0 } else { (v - 1) * 40 + 95 };
-            return Rgb {
-                r: channel(r),
-                g: channel(g),
-                b: channel(b),
-            };
-        }
-        let value = ((index - 232) as u32 * 10 + 8) as u8;
+        let rgb = indexed_color(
+            index,
+            &ansi
+                .iter()
+                .map(|color| color.to_tuple())
+                .map(|(r, g, b)| [r, g, b])
+                .collect::<Vec<_>>()
+                .try_into()
+                .expect("16 ansi colors"),
+        );
         Rgb {
-            r: value,
-            g: value,
-            b: value,
+            r: rgb[0],
+            g: rgb[1],
+            b: rgb[2],
         }
     }
 }
