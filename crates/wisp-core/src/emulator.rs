@@ -4,6 +4,7 @@ use alacritty_terminal::event::{Event, WindowSize};
 use alacritty_terminal::index::Point;
 use alacritty_terminal::selection::Selection;
 use alacritty_terminal::term::color::Colors as TermColors;
+use alacritty_terminal::term::TermMode;
 use alacritty_terminal::vte::ansi::{NamedColor, Rgb};
 use anyhow::{anyhow, Context, Result};
 use wisp_config::{Config, Palette};
@@ -179,6 +180,24 @@ impl Emulator {
 
     pub fn scroll(&mut self, delta_lines: i32) {
         self.model.scroll(delta_lines);
+    }
+
+    pub fn wheel(&mut self, lines: i32) -> Result<()> {
+        if lines == 0 {
+            return Ok(());
+        }
+        if self.model.term().mode().contains(TermMode::ALT_SCREEN) {
+            let count = lines.unsigned_abs().min(self.rows as u32).max(1);
+            let sequence: &[u8] = if lines > 0 { b"\x1b[A" } else { b"\x1b[B" };
+            let mut bytes = Vec::with_capacity((count * 3) as usize);
+            for _ in 0..count {
+                bytes.extend_from_slice(sequence);
+            }
+            self.write(&bytes)
+        } else {
+            self.scroll(lines);
+            Ok(())
+        }
     }
 
     pub fn set_selection(&mut self, selection: Option<Selection>) {

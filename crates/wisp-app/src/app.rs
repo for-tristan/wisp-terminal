@@ -198,7 +198,8 @@ impl ApplicationHandler<UserEvent> for WispApp {
                     }
                 };
                 if lines != 0 {
-                    self.emulator.scroll(lines);
+                    let _ = self.emulator.wheel(lines);
+                    self.needs_redraw = true;
                     self.request_redraw();
                 }
             }

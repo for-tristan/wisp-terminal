@@ -293,6 +293,30 @@ impl Renderer {
         let glyph_count = glyph_instances.len() as u32;
         instances.extend(glyph_instances);
 
+        if snapshot.display_offset > 0 {
+            let (screen_w, screen_h) = self.gpu.size;
+            let total = (snapshot.display_offset + snapshot.screen_lines) as f32;
+            let fraction = snapshot.display_offset as f32 / total;
+            let thumb_height = (snapshot.screen_lines as f32 / total * screen_h as f32)
+                .min(screen_h as f32 * 0.9)
+                .max(24.0);
+            let track_x = screen_w as f32 - 6.0;
+            let thumb_y = fraction * (screen_h as f32 - thumb_height);
+            for quad in [
+                (track_x + 1.0, 0.0, 2.0, screen_h as f32),
+                (track_x - 1.0, thumb_y, 6.0, thumb_height),
+            ] {
+                instances.push(CellInstance {
+                    pos: [quad.0, quad.1],
+                    size: [quad.2, quad.3],
+                    uv: [0.0, 0.0, 0.0, 0.0],
+                    fg: rgb_alpha(cursor_color, 0.45),
+                    bg: [0.0, 0.0, 0.0, 0.0],
+                    kind: KIND_SOLID,
+                });
+            }
+        }
+
         let (width, height) = self.gpu.size;
         let uniform = ScreenUniform {
             screen_size: [width as f32, height as f32],
