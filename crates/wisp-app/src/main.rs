@@ -1,21 +1,35 @@
 mod app;
+mod cli;
 mod input;
 
 use std::time::Duration;
 
 use anyhow::{anyhow, Context, Result};
+use clap::Parser as _;
 use wisp_config::Config;
 use wisp_core::emulator::Emulator;
 
 use crate::app::{UserEvent, WispApp};
+use crate::cli::Cli;
 
 fn main() -> Result<()> {
     std::panic::set_hook(Box::new(|info| {
         log::error!("wisp panicked: {info}");
     }));
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
 
-    let config = Config::load_or_default(None).context("loading configuration")?;
+    let cli = Cli::parse();
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(cli.log_level()))
+        .init();
+
+    if cli.print_config_path {
+        match Config::default_path() {
+            Some(path) => println!("{}", path.display()),
+            None => println!("no default config location on this platform"),
+        }
+        return Ok(());
+    }
+
+    let config = Config::load_or_default(cli.config.as_deref()).context("loading configuration")?;
 
     let event_loop = winit::event_loop::EventLoop::<UserEvent>::with_user_event()
         .build()
@@ -23,10 +37,12 @@ fn main() -> Result<()> {
     let proxy = event_loop.create_proxy();
 
     let wake_proxy = proxy.clone();
-    let emulator = Emulator::new(&config, Some(Box::new(move || {
-        let _ = wake_proxy.send_event(UserEvent::PtyData);
-    })))
-    .context("starting shell session")?;
+    let working_dir = cli.working_dir.clone();
+    let emulator =
+        Emulator::new(&config, working_dir, Some(Box::new(move || {
+            let _ = wake_proxy.send_event(UserEvent::PtyData);
+        })))
+        .context("starting shell session")?;
 
     let mut app = WispApp::new(config.clone(), emulator);
 

@@ -39,9 +39,14 @@ pub struct Emulator {
 }
 
 impl Emulator {
-    pub fn new(config: &Config, wake: Option<Box<dyn Fn() + Send>>) -> Result<Self> {
+    pub fn new(
+        config: &Config,
+        working_dir: Option<std::path::PathBuf>,
+        wake: Option<Box<dyn Fn() + Send>>,
+    ) -> Result<Self> {
         let (cols, rows) = (80usize, 24usize);
         let mut pty_config = PtyConfig::from_config(config);
+        pty_config.working_dir = working_dir;
         pty_config.wake = wake;
         let pty = PtySession::spawn(&mut pty_config)
             .map_err(|e| anyhow!("failed to start shell session: {e}"))
