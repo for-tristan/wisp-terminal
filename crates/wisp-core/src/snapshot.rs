@@ -287,4 +287,67 @@ mod tests {
         let gray = indexed_color(232, &ansi);
         assert_eq!(gray, [8, 8, 8]);
     }
+
+    #[test]
+    fn selection_highlight_uses_palette() {
+        use alacritty_terminal::index::{Column, Line, Point, Side};
+        use alacritty_terminal::selection::{Selection, SelectionType};
+        let to_arr = |tuple: (u8, u8, u8)| [tuple.0, tuple.1, tuple.2];
+
+        let config = Config::default();
+        let mut model = TerminalModel::new(&config, 10, 4);
+        model.feed(b"selected!");
+        let mut selection = Selection::new(
+            SelectionType::Simple,
+            Point::new(Line(0), Column(0)),
+            Side::Left,
+        );
+        selection.update(Point::new(Line(0), Column(7)), Side::Right);
+        model.set_selection(Some(selection));
+
+        let palette = wisp_config::theme::builtin("wisp")
+            .expect("wisp theme")
+            .palette;
+        let selection_bg = palette
+            .color("selection_background")
+            .expect("selection bg")
+            .to_tuple();
+        let selection_fg = palette
+            .color("selection_foreground")
+            .expect("selection fg")
+            .to_tuple();
+
+        let snapshot = model.snapshot(&palette);
+        let selected = &snapshot.cells[0];
+        assert_eq!(selected.bg, to_arr(selection_bg));
+        assert_eq!(selected.fg, to_arr(selection_fg));
+        let unselected = &snapshot.cells[9];
+        assert_ne!(unselected.bg, to_arr(selection_bg));
+    }
+
+    #[test]
+    fn inverse_swaps_colors() {
+        use alacritty_terminal::index::Column;
+
+        let config = Config::default();
+        let mut model = TerminalModel::new(&config, 10, 4);
+        model.feed(b"\x1b[7mX\x1b[27m");
+        let to_arr = |tuple: (u8, u8, u8)| [tuple.0, tuple.1, tuple.2];
+        let palette = wisp_config::theme::builtin("wisp")
+            .expect("wisp theme")
+            .palette;
+        let background = palette
+            .color("background")
+            .expect("background")
+            .to_tuple();
+        let foreground = palette
+            .color("foreground")
+            .expect("foreground")
+            .to_tuple();
+        let snapshot = model.snapshot(&palette);
+        let cell = &snapshot.cells[0];
+        assert_eq!(cell.character, 'X');
+        assert_eq!(cell.fg, to_arr(background));
+        assert_eq!(cell.bg, to_arr(foreground));
+    }
 }
