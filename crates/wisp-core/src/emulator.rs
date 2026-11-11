@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use alacritty_terminal::event::{Event, WindowSize};
-use alacritty_terminal::index::Point;
-use alacritty_terminal::selection::Selection;
+use alacritty_terminal::index::{Point, Side};
+use alacritty_terminal::selection::{Selection, SelectionType};
 use alacritty_terminal::term::color::Colors as TermColors;
 use alacritty_terminal::term::TermMode;
 use alacritty_terminal::vte::ansi::{NamedColor, Rgb};
@@ -202,6 +202,24 @@ impl Emulator {
 
     pub fn set_selection(&mut self, selection: Option<Selection>) {
         self.model.set_selection(selection);
+    }
+
+    pub fn begin_selection(&mut self, point: Point, ty: SelectionType) {
+        let mut selection = Selection::new(ty, point, Side::Left);
+        selection.update(point, Side::Right);
+        self.model.set_selection(Some(selection));
+    }
+
+    pub fn update_selection(&mut self, point: Point, side: Side) {
+        self.model.update_selection(point, side);
+    }
+
+    pub fn clear_selection(&mut self) {
+        self.model.set_selection(None);
+    }
+
+    pub fn selected_text(&self) -> Option<String> {
+        self.model.selection_text_range()
     }
 
     pub fn selection_text(&self, start: Point, end: Point) -> String {

@@ -1,16 +1,17 @@
 use std::sync::Arc;
 
 use winit::application::ApplicationHandler;
-use winit::dpi::PhysicalSize;
-use winit::event::{Ime, MouseScrollDelta, WindowEvent};
+use winit::dpi::{PhysicalPosition, PhysicalSize};
+use winit::event::{ElementState, Ime, MouseButton, MouseScrollDelta, WindowEvent};
 use winit::event_loop::ActiveEventLoop;
 use winit::keyboard::ModifiersState;
 use winit::window::{Window, WindowId};
 use wisp_config::Config;
 use wisp_core::emulator::{AppEvent, Emulator};
+use wisp_core::Side;
 use wisp_render::renderer::Renderer;
 
-use crate::input;
+use crate::input::{self, EncodedInput, MouseState};
 
 #[derive(Debug)]
 pub enum UserEvent {
@@ -23,6 +24,8 @@ pub struct WispApp {
     pub emulator: Emulator,
     pub window: Option<Arc<Window>>,
     pub renderer: Option<Renderer>,
+    pub clipboard: Option<arboard::Clipboard>,
+    pub mouse: MouseState,
     pub modifiers: ModifiersState,
     pub focused: bool,
     pub exited: bool,
@@ -38,6 +41,8 @@ impl WispApp {
             emulator,
             window: None,
             renderer: None,
+            clipboard: None,
+            mouse: MouseState::new(),
             modifiers: ModifiersState::default(),
             focused: false,
             exited: false,
@@ -62,10 +67,38 @@ impl WispApp {
         let cols = (usable_width as f32 / cell_width).floor().max(2.0) as usize;
         let rows = (usable_height as f32 / cell_height).floor().max(2.0) as usize;
         if self.emulator.resize(cols, rows).is_ok() {
-            self.renderer
-                .as_mut()
-                .expect("renderer checked above")
-                .set_origin(padding.x as f32, padding.y as f32);
+            let renderer = self.renderer.as_mut().expect("renderer checked above");
+            renderer.set_origin(padding.x as f32, padding.y as f32);
+            self.mouse.origin = (padding.x as f32, padding.y as f32);
+            let (cell_width, cell_height) = renderer.metrics();
+            self.mouse.cell_size = (cell_width, cell_height);
+            self.mouse.grid = (cols, rows);
+        }
+    }
+
+    fn clipboard(&mut self) -> Option<&mut arboard::Clipboard> {
+        if self.clipboard.is_none() {
+            self.clipboard = arboard::Clipboard::new().ok();
+        }
+        self.clipboard.as_mut()
+    }
+
+    fn copy_selection(&mut self) {
+        if let Some(text) = self.emulator.selected_text() {
+            if let Some(clipboard) = self.clipboard() {
+                if let Err(error) = clipboard.set_text(text) {
+                    log::warn!("clipboard set failed: {error}");
+                }
+            }
+        }
+    }
+
+    fn paste_clipboard(&mut self) {
+        let text = self
+            .clipboard()
+            .and_then(|clipboard| clipboard.get_text().ok());
+        if let Some(text) = text {
+            let _ = self.emulator.paste(&text);
         }
     }
 
@@ -87,9 +120,20 @@ impl WispApp {
                 AppEvent::ChildExited(code) => {
                     self.emulator.notify_exit(code);
                     self.exited = true;
+                    self.needs_redraw = true;
                     self.request_redraw();
                 }
-                AppEvent::Bell | AppEvent::ClipboardStore(_) | AppEvent::ClipboardLoadRequest(_) => {}
+                AppEvent::Bell => {}
+                AppEvent::ClipboardStore(text) => {
+                    if let Some(clipboard) = self.clipboard() {
+                        let _ = clipboard.set_text(text);
+                    }
+                }
+                AppEvent::ClipboardLoadRequest(formatter) => {
+                    if let Some(text) = self.clipboard().and_then(|c| c.get_text().ok()) {
+                        let _ = self.emulator.write(formatter(&text).as_bytes());
+                    }
+                }
             }
         }
         result.damaged
@@ -174,19 +218,76 @@ impl ApplicationHandler<UserEvent> for WispApp {
                     event_loop.exit();
                     return;
                 }
-                if let Some(bytes) = input::encode_key(&event, self.modifiers) {
-                    let _ = self.emulator.input(&bytes);
+                if let Some(encoded) = input::encode_key(&event, self.modifiers) {
+                    match encoded {
+                        EncodedInput::Bytes(bytes) => {
+                            self.emulator.clear_selection();
+                            self.needs_redraw = true;
+                            let _ = self.emulator.input(&bytes);
+                        }
+                        EncodedInput::Copy => self.copy_selection(),
+                        EncodedInput::Paste => self.paste_clipboard(),
+                    }
                 }
             }
             WindowEvent::Ime(Ime::Commit(text)) => {
+                self.emulator.clear_selection();
                 let _ = self.emulator.paste(&text);
             }
             WindowEvent::Ime(_) => {}
             WindowEvent::MouseInput { state, button, .. } => {
-                let _ = (state, button);
+                let position = self.mouse.position;
+                match (button, state) {
+                    (MouseButton::Left, ElementState::Pressed) => {
+                        let now = std::time::Instant::now();
+                        let multi = self
+                            .mouse
+                            .last_click
+                            .is_some_and(|last| now.duration_since(last).as_millis() < 400);
+                        self.mouse.click_count = if multi {
+                            self.mouse.click_count + 1
+                        } else {
+                            1
+                        };
+                        self.mouse.last_click = Some(now);
+                        self.mouse.left_down = true;
+                        if let Some(point) =
+                            position.and_then(|position| self.mouse.viewport_point(position))
+                        {
+                            if let Some(ty) = input::selection_type_for_click(self.mouse.click_count)
+                            {
+                                self.emulator.begin_selection(point, ty);
+                                self.needs_redraw = true;
+                            }
+                        }
+                    }
+                    (MouseButton::Left, ElementState::Released) => {
+                        self.mouse.left_down = false;
+                    }
+                    (MouseButton::Middle, ElementState::Pressed) => {
+                        self.paste_clipboard();
+                    }
+                    (MouseButton::Right, ElementState::Pressed) => {
+                        if let Some(point) =
+                            position.and_then(|position| self.mouse.viewport_point(position))
+                        {
+                            let side = side_for_position(position, &self.mouse);
+                            self.emulator.update_selection(point, side);
+                            self.needs_redraw = true;
+                        }
+                    }
+                    _ => {}
+                }
             }
             WindowEvent::CursorMoved { position, .. } => {
-                let _ = position;
+                self.mouse.position = Some(position);
+                if self.mouse.left_down {
+                    if let Some(point) = self.mouse.viewport_point(position) {
+                        let side = side_for_position(Some(position), &self.mouse);
+                        self.emulator.update_selection(point, side);
+                        self.needs_redraw = true;
+                    }
+                }
             }
             WindowEvent::MouseWheel { delta, .. } => {
                 let lines = match delta {
@@ -226,4 +327,21 @@ impl ApplicationHandler<UserEvent> for WispApp {
     }
 
     fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {}
+}
+
+fn side_for_position(position: Option<PhysicalPosition<f64>>, mouse: &MouseState) -> Side {
+    let Some(position) = position else {
+        return Side::Right;
+    };
+    let (ox, _) = mouse.origin;
+    let (cw, _) = mouse.cell_size;
+    if cw <= 0.0 {
+        return Side::Right;
+    }
+    let within = (position.x - ox as f64) % cw as f64;
+    if within < cw as f64 * 0.5 {
+        Side::Left
+    } else {
+        Side::Right
+    }
 }

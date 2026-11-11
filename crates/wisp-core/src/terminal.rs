@@ -2,11 +2,12 @@ use std::sync::mpsc::{self, Receiver};
 
 use alacritty_terminal::event::{Event, EventListener};
 use alacritty_terminal::grid::{Dimensions, Scroll};
-use alacritty_terminal::index::{Point};
+use alacritty_terminal::index::{Point, Side};
 use alacritty_terminal::selection::Selection;
 use alacritty_terminal::term::{Config as TermConfig, Term, TermMode};
 use alacritty_terminal::vte::ansi::Processor;
 use wisp_config::Config;
+
 
 #[derive(Clone)]
 pub struct EventProxy {
@@ -110,6 +111,18 @@ impl TerminalModel {
 
     pub fn set_selection(&mut self, selection: Option<Selection>) {
         self.term.selection = selection;
+    }
+
+    pub fn update_selection(&mut self, point: Point, side: Side) {
+        if let Some(selection) = &mut self.term.selection {
+            selection.update(point, side);
+        }
+    }
+
+    pub fn selection_text_range(&self) -> Option<String> {
+        let term = &self.term;
+        let range = term.selection.as_ref()?.to_range(term)?;
+        Some(term.bounds_to_string(range.start, range.end))
     }
 
     pub fn selection_text(&self, start: Point, end: Point) -> String {
