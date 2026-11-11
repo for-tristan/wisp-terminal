@@ -8,6 +8,8 @@ repository.workspace = true
 
 [dependencies]
 wgpu = { workspace = true }
+winit = { workspace = true }
+pollster = { workspace = true }
 bytemuck = { workspace = true }
 font-kit = { workspace = true }
 rusttype = { workspace = true }

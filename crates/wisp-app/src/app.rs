@@ -8,6 +8,7 @@ use winit::keyboard::ModifiersState;
 use winit::window::{Window, WindowId};
 use wisp_config::Config;
 use wisp_core::emulator::{AppEvent, Emulator};
+use wisp_render::renderer::Renderer;
 
 use crate::input;
 
@@ -20,6 +21,7 @@ pub struct WispApp {
     pub config: Config,
     pub emulator: Emulator,
     pub window: Option<Arc<Window>>,
+    pub renderer: Option<Renderer>,
     pub modifiers: ModifiersState,
     pub focused: bool,
     pub exited: bool,
@@ -32,11 +34,22 @@ impl WispApp {
             config,
             emulator,
             window: None,
+            renderer: None,
             modifiers: ModifiersState::default(),
             focused: false,
             exited: false,
             window_size: None,
         }
+    }
+
+    fn background_rgb(&self) -> [u8; 3] {
+        self.config
+            .theme()
+            .palette
+            .color("background")
+            .map(|color| color.to_tuple())
+            .map(|(r, g, b)| [r, g, b])
+            .unwrap_or([0x1A, 0x22, 0x2C])
     }
 
     fn request_redraw(&self) {
@@ -81,6 +94,13 @@ impl ApplicationHandler<UserEvent> for WispApp {
             .create_window(attributes)
             .expect("failed to create window");
         self.window = Some(Arc::new(window));
+
+        let background = self.background_rgb();
+        match Renderer::new(self.window.clone().expect("window"), background) {
+            Ok(renderer) => self.renderer = Some(renderer),
+            Err(error) => log::error!("renderer init failed: {error}"),
+        }
+
         self.request_redraw();
     }
 
@@ -107,6 +127,10 @@ impl ApplicationHandler<UserEvent> for WispApp {
             WindowEvent::CloseRequested => event_loop.exit(),
             WindowEvent::Resized(size) => {
                 self.window_size = Some(size);
+                if let Some(renderer) = &mut self.renderer {
+                    renderer.resize(size.width, size.height);
+                }
+                self.request_redraw();
             }
             WindowEvent::Focused(focused) => {
                 self.focused = focused;
@@ -146,6 +170,11 @@ impl ApplicationHandler<UserEvent> for WispApp {
             }
             WindowEvent::RedrawRequested => {
                 let damaged = self.pump();
+                if let Some(renderer) = &mut self.renderer {
+                    if let Err(error) = renderer.render() {
+                        log::error!("frame render failed: {error}");
+                    }
+                }
                 let _ = damaged;
                 if self.exited {
                     event_loop.exit();
