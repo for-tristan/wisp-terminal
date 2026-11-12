@@ -11,6 +11,7 @@ members = [
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.85"
+license = "MIT"
 repository = "https://github.com/for-tristan/wisp-terminal"
 description = "A high-performance, GPU-accelerated terminal emulator written in Rust"
 
