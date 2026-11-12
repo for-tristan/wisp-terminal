@@ -42,6 +42,8 @@ pub struct Renderer {
     cell_pipeline: CellPipeline,
     cell_size: (f32, f32),
     origin: (f32, f32),
+    font_config: wisp_config::FontConfig,
+    scale_factor: f32,
     instance_buffer: Vec<CellInstance>,
     glyph_buffer: Vec<CellInstance>,
 }
@@ -53,8 +55,9 @@ impl Renderer {
         font_config: &wisp_config::FontConfig,
         opacity: f32,
     ) -> Result<Self> {
+        let scale_factor = window.scale_factor() as f32;
         let gpu = GpuContext::new(window)?;
-        let font_stack = FontStack::load(font_config)?;
+        let font_stack = FontStack::load(font_config, scale_factor)?;
         let atlas = GlyphAtlas::new(&gpu.device);
 
         let atlas_sampler = gpu.device.create_sampler(&wgpu::SamplerDescriptor {
@@ -85,6 +88,8 @@ impl Renderer {
             cell_pipeline,
             cell_size,
             origin: (0.0, 0.0),
+            font_config: font_config.clone(),
+            scale_factor,
             instance_buffer: Vec::with_capacity(4096),
             glyph_buffer: Vec::with_capacity(4096),
         })
@@ -120,6 +125,23 @@ impl Renderer {
             .cache_glyph(&self.gpu.queue, glyph, variant.font_id());
         self.glyph_map.insert(key, coords);
         coords
+    }
+
+    pub fn reload_fonts(&mut self, scale_factor: f64) -> Result<()> {
+        let scale = scale_factor as f32;
+        self.font_stack = FontStack::load(&self.font_config, scale)?;
+        self.cell_size = (
+            self.font_stack.metrics.width.max(1.0),
+            self.font_stack.metrics.height.max(1.0),
+        );
+        self.glyph_map.clear();
+        self.glyph_map_generation = self.atlas.generation;
+        self.scale_factor = scale;
+        Ok(())
+    }
+
+    pub fn scale_factor(&self) -> f32 {
+        self.scale_factor
     }
 
     pub fn set_background(&mut self, background: [u8; 3]) {
@@ -166,7 +188,7 @@ impl Renderer {
         let background = self.background;
         let cursor_color = self.cursor;
         let cursor_text_color = self.cursor_text;
-        let baseline = self.font_stack.baseline_offset + self.font_stack.metrics.ascent;
+        let baseline = (self.font_stack.baseline_offset + self.font_stack.metrics.ascent).round();
         let line_thickness = (ch * 0.06).clamp(1.0, 2.5);
 
         let cursor = if cursor_visible {
@@ -217,7 +239,7 @@ impl Renderer {
                     cell.flags & FLAG_ITALIC != 0,
                 );
                 if let Some((uv_rect, screen_rect)) = self.ensure_glyph(variant, cell.character) {
-                    let pen_x = x;
+                    let pen_x = x.round();
                     let pen_y = y + baseline;
                     let gx = pen_x + screen_rect.min.x as f32;
                     let gy = pen_y + screen_rect.min.y as f32;

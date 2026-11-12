@@ -56,7 +56,7 @@ pub struct FontStack {
 }
 
 impl FontStack {
-    pub fn load(config: &FontConfig) -> anyhow::Result<Self> {
+    pub fn load(config: &FontConfig, scale_factor: f32) -> anyhow::Result<Self> {
         let data = load_style_variants(config);
         let parse = |font: Option<Font<'static>>| -> anyhow::Result<Font<'static>> {
             font.ok_or_else(|| anyhow::anyhow!("failed to parse font data"))
@@ -66,7 +66,7 @@ impl FontStack {
         let italic = parse(Font::try_from_bytes(data.2))?;
         let bold_italic = parse(Font::try_from_bytes(data.3))?;
 
-        let pixel_height = config.size_pt * (96.0 / 72.0);
+        let pixel_height = config.size_pt * (96.0 / 72.0) * scale_factor;
         let scale = Scale::uniform(pixel_height);
         let vm = regular.v_metrics(scale);
 
