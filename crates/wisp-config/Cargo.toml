@@ -4,6 +4,7 @@ description = "wisp.toml configuration parsing, themes and defaults for Wisp"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
+license.workspace = true
 repository.workspace = true
 
 [dependencies]
