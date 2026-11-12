@@ -60,16 +60,19 @@ impl WispApp {
             return;
         };
         let size = window.inner_size();
+        let scale = window.scale_factor() as f32;
         let (cell_width, cell_height) = renderer.metrics();
         let padding = self.config.window.padding;
-        let usable_width = size.width.saturating_sub(2 * padding.x as u32);
-        let usable_height = size.height.saturating_sub(2 * padding.y as u32);
+        let pad_x = (padding.x as f32 * scale).round() as u32;
+        let pad_y = (padding.y as f32 * scale).round() as u32;
+        let usable_width = size.width.saturating_sub(2 * pad_x);
+        let usable_height = size.height.saturating_sub(2 * pad_y);
         let cols = (usable_width as f32 / cell_width).floor().max(2.0) as usize;
         let rows = (usable_height as f32 / cell_height).floor().max(2.0) as usize;
         if self.emulator.resize(cols, rows).is_ok() {
             let renderer = self.renderer.as_mut().expect("renderer checked above");
-            renderer.set_origin(padding.x as f32, padding.y as f32);
-            self.mouse.origin = (padding.x as f32, padding.y as f32);
+            renderer.set_origin(pad_x as f32, pad_y as f32);
+            self.mouse.origin = (pad_x as f32, pad_y as f32);
             let (cell_width, cell_height) = renderer.metrics();
             self.mouse.cell_size = (cell_width, cell_height);
             self.mouse.grid = (cols, rows);
@@ -217,6 +220,24 @@ impl ApplicationHandler<UserEvent> for WispApp {
             WindowEvent::Resized(size) => {
                 self.window_size = Some(size);
                 if let Some(renderer) = &mut self.renderer {
+                    renderer.resize(size.width, size.height);
+                }
+                self.sync_grid();
+                self.request_redraw();
+            }
+            WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
+                if let Some(renderer) = &mut self.renderer {
+                    if renderer.reload_fonts(scale_factor).is_err() {
+                        log::error!("font reload failed for scale factor {scale_factor}");
+                    }
+                    let (cell_width, cell_height) = renderer.metrics();
+                    self.emulator
+                        .set_cell_size(cell_width as u16, cell_height as u16);
+                    let size = self
+                        .window
+                        .as_ref()
+                        .map(|window| window.inner_size())
+                        .unwrap_or(PhysicalSize::new(0, 0));
                     renderer.resize(size.width, size.height);
                 }
                 self.sync_grid();

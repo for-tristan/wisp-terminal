@@ -20,7 +20,8 @@ Initial development release of Wisp, a GPU-accelerated terminal emulator written
 - wgpu-based instanced renderer: solid quads for backgrounds/cursor/decorations,
   alpha-blended glyph quads fed from a 2048x2048 dynamic glyph atlas.
 - Font loading via `font-kit` system discovery with bundled IBM Plex Mono
-  (SIL OFL) fallback; four style variants; DPI-independent cell metrics.
+  (SIL OFL) fallback; four style variants; glyph rasterization at the display
+  scale factor with pixel-snapped baselines for crisp text.
 - Damage-driven redraws with vsync (Fifo) presentation, cursor blink timer,
   hollow cursor when unfocused, scroll position indicator.
 
@@ -44,3 +45,10 @@ Initial development release of Wisp, a GPU-accelerated terminal emulator written
 
 - 20 unit tests across config/core/input, `cargo fmt` clean,
   `cargo clippy -D warnings` clean, GitHub Actions CI on Linux/macOS/Windows.
+
+### Fixed
+
+- Blurry, low-resolution text on scaled displays: glyphs are now rasterized
+  at the window scale factor (and re-rasterized when it changes), window
+  padding scales with the display, and glyph pen positions snap to whole
+  physical pixels so the linear atlas filter can no longer smear them.
